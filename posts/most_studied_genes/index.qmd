@@ -1,0 +1,127 @@
+---
+title: "Most studied worm neuronal genes"
+author: "Alexis Weinreb"
+date: "2023-11-05"
+categories: [worm, R]
+---
+
+
+What genes are the most studied in worms? Wormbase's comprehensive curation can help us answer that.
+
+# Data download
+
+We want to find how many publications are associated with each gene. Wormbase offers us several tools to that effect, we will use SimpleMine which is the easiest here. Other possibilities include WormMine or the REST API.
+
+So, we open [SimpleMine](https://wormbase.org//tools/mine/simplemine.cgi), in Step 2 we select "download results as a tab-delimited file", in Step 3 we select "Wormbase Gene ID", "Public Name", "Expr_pattern Tissue" and "Reference". And in Step 4 we download "all genes for this species".
+
+## Data loading
+
+Now we read this data in R. We also rename the columns for names that are easier to work with. And if you look through the data, you may notice a number of genes do not have references associated, we need to ensure this is registered correctly.
+
+```{r}
+suppressPackageStartupMessages(library(tidyverse))
+
+simplemine_results <- read_tsv("data/simplemine_results.txt",
+                               col_types = "ccccc",
+                               na = "N.A.") |>
+  select(gene_id = `WormBase Gene ID`,
+         gene_name = `Public Name`,
+         expr_pattern = `Expr_pattern Tissue`,
+         references = Reference)
+
+simplemine_results
+```
+
+
+We have one row per gene, let's make it one row per reference and count the number of rows for a given gene.
+
+```{r}
+papers_per_gene <- simplemine_results |>
+  separate_rows(references, sep = ",") |>
+  filter(!is.na(references)) |>
+  group_by(gene_id, gene_name) |>
+  summarize(nb_papers = n(),
+            .groups = "drop") |>
+  arrange(desc(nb_papers))
+
+papers_per_gene
+```
+
+Perhaps unsurprisingly, the 2 most studied genes in worms are *daf-2* and *daf-16*. Then we see a lot more genes that are quite well-studied too. Let's look at the distribution to see if there are distinct classes.
+
+```{r}
+ggplot(papers_per_gene) +
+  geom_histogram(aes(x=nb_papers), bins = 100, color = "white") +
+  theme_classic() +
+  scale_x_continuous(n.breaks = 10) +
+  scale_y_continuous(trans = "log1p", breaks = c(0,3,10,30,100,300,1000,3000,10000)) +
+  xlab("Number of papers") + ylab("Number of genes")
+```
+
+So the categories we could distinguish are:
+* genes with more than 250 papers, that appeared at the top of the list
+* genes with many papers (let's take > 20)
+* genes with few or no papers
+
+We can visualize the cutoffs on the histogram:
+
+```{r}
+ggplot(papers_per_gene) +
+  geom_histogram(aes(x=nb_papers), bins = 500) +
+  theme_classic() +
+  scale_x_continuous(n.breaks = 10) +
+  scale_y_continuous(trans = "log1p", breaks = c(0,3,10,30,100,300,1000,3000,10000)) +
+  xlab("Number of papers") + ylab("Number of genes") +
+  geom_vline(aes(xintercept = 20), color = "red3") +
+  geom_vline(aes(xintercept = 250), color = "green4")
+```
+
+
+
+We can look at the number of genes in each category:
+
+```{r}
+papers_per_gene |>
+  mutate(category = cut(nb_papers,
+                        breaks = c(0,20,250,Inf),
+                        labels = c("lowly","medium","highly"))) |> 
+  group_by(category) |>
+  summarize(nb_genes = n(),
+            .groups = "drop")
+```
+
+So, there are 59 highly studied genes, and another 1308 well-studied genes. Let's take a closer look at these 59 most cited genes.
+
+```{r}
+papers_per_gene |>
+  filter(nb_papers >= 250) |>
+  pull(gene_name)
+
+```
+
+
+## By tissue type
+
+Let's say I'm more interested in neuronal genes that are highly studied. One way to implement such a restriction is to look at which tissue each gene is supposedly expressed in.
+
+```{r}
+simplemine_results |>
+  mutate(is_neuronal = str_detect(expr_pattern, "neuron")) |>
+  filter(is_neuronal) |>
+  separate_rows(references, sep = ",") |>
+  filter(!is.na(references)) |>
+  group_by(gene_id, gene_name) |>
+  summarize(nb_papers = n(),
+            .groups = "drop") |>
+  arrange(desc(nb_papers)) |>
+  filter(nb_papers >= 250) |>
+  select(gene_name, nb_papers) |>
+  knitr::kable()
+  
+```
+
+## Limitations
+
+First, we are interested in most studied genes, but we only looked at the most cited genes. For example, *unc-54* is highly cited, but that may be largely due to its use in transgenes.
+
+Second, if we are interested in genes studied for their role in a given tissue (e.g. neurons), we would need a classification of the papers they're cited in. Here, we rely on (sometimes imprecise) annotations of tissues where a gene is expressed. For example, *daf-16* is expressed in neurons, and has been largely studied in all tissues, so it appears as the top hit.
