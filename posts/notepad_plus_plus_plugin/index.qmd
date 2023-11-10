@@ -1,0 +1,24 @@
+---
+title: "Writing a Notepad++ plugin"
+author: "Alexis Weinreb"
+date: "2023-11-09"
+categories: [programming]
+---
+
+I am in the process of writing a plugin for Notepad++ to perform some biological operations. As I am not familiar with compiled languages, I am taking some notes here about the process.
+
+# Notepad++ for DNA sequences
+
+The plugin provides a few functions to work with biological sequences, namely taking the reverse-complement of a DNA string, getting its protein translation, and finding the next ORF. Of course such functions are already available in plenty of specialized software (e.g. [ApE](https://jorgensen.biology.utah.edu/wayned/ape/) or [Benchling](benchling.com)), so why add it to a unrelated application?
+
+I use dedicated DNA software regularly, but it tends to be quite rigid, accepting only DNA characters, no space, little formatting... which is a good thing, as it makes it safer and avoid typos. But sometimes I need more of a sketchpad, pasting fragments of DNA in different frames, along with bits of translations. Maybe looking at some sequence in different frames. Maybe looking at a BAM file and trying to find a barcode and UMI. In these cases, I've found Notepad++ very useful, in particular it has this great feature that, if I select a sequence, it will highlight all identical sequences (more flexible than the search function of ApE or Benchling). But it is slightly annoying to switch between windows whenever I want to check if a string is present in revcomp etc.
+
+# Tooling
+
+To develop a plugin, the first step is to go to [the corresponding page](https://npp-user-manual.org/docs/plugins/#how-to-develop-a-plugin) in the Notepad++ documentation.
+
+There, you will find promises to develop your first plugin in less than 10 minutes, and that "Even your grandmom can do it!", I believe this is true, assuming your grandmom is familiar with C++ and the Win32 API.
+
+So let's see how this works. First you need to work in a compiled language, that is able to use existing header files and produce a DLL. If your favorite language doesn't do that, or if you have no idea what any of this means, I suggest to use with the classic C++.
+
+You will need a development environment for C++, in particular a compiler and Windows header files. The easiest is to look for [Microsoft Visual Studio](https://visualstudio.microsoft.com/downloads/), and download the (free) Community Edition. Careful, the naming is confusing: you  don't want "Visual Studio Code", which is a different program. From the website, you can only download an installer, and from there you can download the full Community edition (note that it is several GB). In addition, you will want to download the C++ bundle which contains important files.
