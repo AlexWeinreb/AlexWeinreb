@@ -21,4 +21,223 @@ There, you will find promises to develop your first plugin in less than 10 minut
 
 So let's see how this works. First you need to work in a compiled language, that is able to use existing header files and produce a DLL. If your favorite language doesn't do that, or if you have no idea what any of this means, I suggest to use with the classic C++.
 
-You will need a development environment for C++, in particular a compiler and Windows header files. The easiest is to look for [Microsoft Visual Studio](https://visualstudio.microsoft.com/downloads/), and download the (free) Community Edition. Careful, the naming is confusing: you  don't want "Visual Studio Code", which is a different program. From the website, you can only download an installer, and from there you can download the full Community edition (note that it is several GB). In addition, you will want to download the C++ bundle which contains important files.
+You will need a development environment for C++, in particular a compiler and Windows header files. The easiest is to look up [Microsoft Visual Studio](https://visualstudio.microsoft.com/downloads/), and download the (free) Community Edition. Careful, the naming is confusing: you  don't want "Visual Studio Code", which is a different program. From the website, you can only download an installer, and from there you can download the full Community edition (note that it is several GB). In addition, you will want to download the C++ bundle which contains important build tools. 
+
+Separately, you can open the [plugin development](https://npp-user-manual.org/docs/plugins/#how-to-develop-a-plugin) section of the Notepad++ user manual, and download the [plugin template](https://github.com/npp-plugins/plugintemplate/releases) source code.
+
+# Editing the plugin template
+
+Once Visual Studio is fully installed, we start open our project. Make a copy of the plugin template with the appropriate name and path. This contains two subdirectories, `src`, for your source code, and `vs.proj`, containing information for Visual Studio. In particular, the file `vs.proj/NppPluginTemplate.vcxproj` can be opened in Visual Studio.
+
+The files to edit are in `src`. Two files need to be edited:
+
+* `PluginDefinition.cpp` is where you define your actual plugin functions
+* `PluginDefinition.h` is where you declare the functions
+* `NppPluginDemo.rc` declares some general information (e.g. plugin name and version)
+
+As far as I can tell, you won't need to edit any other file in there. I added a `README.md` and a `LICENSE` for Github. If you download the [plugin demo](https://github.com/npp-plugins/plugindemo/releases) you can see how they added a `resource` folder and `resource.h` file.
+
+# Compiling the plugin
+
+Before going any further, we might want to check our configuration. Download the [plugin demo](https://github.com/npp-plugins/plugindemo/releases) and open it in Visual Studio. In the toolbar on top of the screen, you should see a menu such as this one:
+
+![](resource/compilation_menu.png)
+
+
+The first field is to select the type of compilation: while developing, "Debug" gives you more information about the errors and log messages. When you have a satisfying version of your code, select "Release" to compile an optimized program, that gives less information about what's happening.
+
+The second menu is the architecture to compile for. It needs to match the version of Notepad++ installed: if you have the 32 bits version, compile "x86", if you have the 64 bits, compile as "x86". On a final version, you may want to compile for both architectures and make the binaries available on Github.
+
+Finally, the "Play" symbol starts the compilation. Click it having selected the appropriate parameters. If everything goes well, you will get an error message along  the lines of:
+
+> Unable to start 'C:\\path\\to\\PluginDemo.dll'.
+>
+> C:\\path\\to\\PluginDemo.dll is not a valid Win32 application.
+
+Indeed, our plugin is not expected to be a valid standalone application, it's just a dll that can be loaded by another application (Notepad++).
+
+Open the directory of your plugin, in `vs.proj` a new subdirectory has been created, containing the newly compiled binary.
+
+All that's left to do is to [install this plugin by copy/pasting it in the appropriate directory](https://npp-user-manual.org/docs/plugins/#install-plugin-manually). Don't forget to close Notepad++ before pasting. Then, when you re-open Notepad++, your new plugin should have appeared in the "Plugins" menu.
+
+
+# Preparing to write a first function
+
+Now let's start to work on a real plugin. As indicated [in the manual](https://npp-user-manual.org/docs/plugins/#how-to-develop-a-plugin), we start by opening `PluginDefinition.h`. We define the plugin name:
+
+```cpp
+//-------------------------------------//
+//-- STEP 1. DEFINE YOUR PLUGIN NAME --//
+//-------------------------------------//
+// Here define your plugin name
+//
+const TCHAR NPP_PLUGIN_NAME[] = TEXT("Biotools for NPP");
+```
+
+And we define the number of functions, let's start with just one:
+
+```cpp
+//-----------------------------------------------//
+//-- STEP 2. DEFINE YOUR PLUGIN COMMAND NUMBER --//
+//-----------------------------------------------//
+//
+// Here define the number of your plugin commands
+//
+const int nbFunc = 1;
+```
+
+A bit below that, we need to indicate the name of the functions:
+
+```cpp
+//
+// Your plugin command functions
+//
+void revcomp();
+```
+
+
+Now we can switch to the file `PluginDefinition.cpp`.
+
+```cpp
+//--------------------------------------------//
+    //-- STEP 3. CUSTOMIZE YOUR PLUGIN COMMANDS --//
+    //--------------------------------------------//
+    // with function :
+    // setCommand(int index,                      // zero based number to indicate the order of command
+    //            TCHAR *commandName,             // the command name that you want to see in plugin menu
+    //            PFUNCPLUGINCMD functionPointer, // the symbol of function (function pointer) associated with this command. The body should be defined below. See Step 4.
+    //            ShortcutKey *shortcut,          // optional. Define a shortcut to trigger this command
+    //            bool check0nInit                // optional. Make this menu item be checked visually
+    //            );
+    setCommand(0, TEXT("Reverse-Complement"), revcomp, NULL, false);
+```
+
+The first command has an index of `0`, and will call the function `revcomp()`. Note that this only compiles if `revcomp()` has been declared in the header file (`PluginDefinition.h`), otherwise the compiler won't know this is a correct function name.
+
+And we arrive at this part, where we can finally start writing our actual functions:
+
+```cpp
+//----------------------------------------------//
+//-- STEP 4. DEFINE YOUR ASSOCIATED FUNCTIONS --//
+//----------------------------------------------//
+```
+
+
+# The Notepad++ and Scintilla APIs
+
+Now things get a bit more specific. To interact with Notepad++, you can use the API calls [listed here](https://npp-user-manual.org/docs/plugin-communication/). However, the main editor window is actually not directly controlled by Notepad++, it's piloted by [Scintilla](https://en.wikipedia.org/wiki/Scintilla_(software)), so you can interact with it using the API calls [listed there](https://www.scintilla.org/ScintillaDoc.html).
+
+Finally, as indicated in [the Notepad++ documentation](https://npp-user-manual.org/docs/plugin-communication/#notepad-messages), these calls have to be made using Window's [`SendMessage` API](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendmessage), and will have the form:
+
+```cpp
+LRESULT SendMessage(
+  [in] HWND   hWnd,
+  [in] UINT   Msg,
+  [in] WPARAM wParam,
+  [in] LPARAM lParam
+);
+```
+
+where `hWnd` is a handle to the Notepad++ or Scintilla program we are sending the message to, `Msg` is the name of the command to execute (fron the documentations linked above), and `wParam` and `lParam` and parameters explained by the documentation.
+
+
+Let's make a concrete example. For my function `revcomp()`, I expect the user to select a text and call the plugin. The plugin needs to get the selected text, do some processing, and replace it with a modified text. So how do we get the selected text? As this is happening inside the editor window, we look at the Scintilla API, and find [`SCI_GETSELTEXT`](https://www.scintilla.org/ScintillaDoc.html#SCI_GETSELTEXT):
+
+> SCI_GETSELTEXT(<unused>, char *text NUL-terminated) → position
+This copies the currently selected text and a terminating NUL(0) byte to the text buffer. The buffer size should be determined by calling with a NULL pointer for the text argument: 1 + SCI_GETSELTEXT(0, NULL). This allows for rectangular and discontiguous selections as well as simple selections. See Multiple Selection for information on how multiple and rectangular selections and virtual space are copied.
+
+
+So, we need to write
+
+```cpp
+SendMessage(scintillaHandle, SCI_GETSELTEXT, whatever, ptr)
+```
+
+where `whatever` will be ignored, and `ptr` is a pointer to a buffer in which the selected text will be written.
+
+Here we have an additional difficulty: we need to initialize this buffer, and it needs to be long enough. So, as indicated in the doc, we will call this function twice, first using "a NULL pointer for the text argument", and a second time with an appropriate pre-initialized buffer.
+
+We can thus write this function:
+
+```cpp
+std::string getSelectedText(HWND scintillaHandle)
+{
+    std::string selectedText;
+
+    
+    // Determine the buffer size needed for the selected text
+    LPARAM length = ::SendMessage(scintillaHandle, SCI_GETSELTEXT, 0, (LPARAM)nullptr);
+
+    if (length > 0)
+    {
+        char* buffer = new char[length + 1];
+        buffer[0] = '\0'; // Ensure the buffer is null-terminated
+
+        // Retrieve the selected text
+        ::SendMessage(scintillaHandle, SCI_GETSELTEXT, 0, (LPARAM)buffer);
+        selectedText = buffer;
+        delete[] buffer;
+    }
+    else {
+        selectedText = "";
+    }
+
+    return selectedText;
+}
+```
+
+Some notes. First, I call `::SendMessage()` to indicate that this is a function in the global namespace, and it doesn't get overwritten. This appears to be the accepted good practice in this context.
+
+As the first parameter of `SCI_GETSELTEXT` (the `wParam`) is ignored, I use `0` here.
+
+When determining the buffer size, I can use the `nullptr` that already exists in C++ to define a NULL pointer. I will cast it [into an `LPARAM`](https://stackoverflow.com/questions/2515261/what-are-the-definitions-for-lparam-and-wparam) to make sure the type checker doesn't complain.
+
+One part that this function doesn't address is the `scintillaHandle`. How can I call this function? For this, we must turn to the Notepad++ interface, where we find [`NPPM_GETCURRENTSCINTILLA`](https://npp-user-manual.org/docs/plugin-communication/#2028-nppm-getcurrentscintilla):
+
+> [2028] NPPM_GETCURRENTSCINTILLA
+> 
+> Retrieves the current Scintilla view
+> 
+> Parameters:
+> 
+> wParam [in]
+>     int, must be zero.
+> lParam [out]
+> 
+>     int * currentEdit, pointer to the buffer receiving the current view. The returned value can be one of the following:
+> 
+>     	Value        Meaning
+>     	  0          The main view
+>     	  1          The second view
+>     	 -1          In case of an error
+> 
+> Return value:
+> 
+>     Returns always True
+
+
+So we got it, we need to call:
+
+```cpp
+::SendMessage(nppData._nppHandle, NPPM_GETCURRENTSCINTILLA, 0, (LPARAM)&which);
+```
+
+Where the `nppData._nppHandle` is defined by Notepad++ and contain its handle, `wParam = 0` as indicated by the documentation, and we give a pointer to `which` to store the Scintilla handle. To check for error, we can initialize `which` to a meaningless value, and select the handle based on the value of `which`:
+
+```cpp
+int which = -1;
+::SendMessage(nppData._nppHandle, NPPM_GETCURRENTSCINTILLA, 0, (LPARAM)&which);
+if (which == -1)
+    return ;
+
+HWND scintillaHandle = (which == 0) ? nppData._scintillaMainHandle : nppData._scintillaSecondHandle;
+
+
+std::string selection = getSelectedText(scintillaHandle);
+```
+
+
+
+
+
+
