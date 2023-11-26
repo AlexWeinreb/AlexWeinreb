@@ -5,9 +5,11 @@ date: "2023-11-09"
 categories: [programming]
 ---
 
-I am in the process of writing a plugin for Notepad++ to perform some biological operations. As I am not familiar with compiled languages, I am taking some notes here about the process.
+I am in the process of writing a plugin for Notepad++ to perform some biological operations. As I am not familiar with C++ and other compiled languages, I am taking some notes here about the process.
 
-# Notepad++ for DNA sequences
+Note, another approach that I haven't tried but might be of interest to anyone reading this: there is a [PythonScript](https://npppythonscript.sourceforge.net/) plugin that may allow to do all of this in a much easier way.
+
+# Motivation: Notepad++ for DNA sequences
 
 The plugin provides a few functions to work with biological sequences, namely taking the reverse-complement of a DNA string, getting its protein translation, and finding the next ORF. Of course such functions are already available in plenty of specialized software (e.g. [ApE](https://jorgensen.biology.utah.edu/wayned/ape/) or [Benchling](benchling.com)), so why add it to a unrelated application?
 
@@ -237,7 +239,29 @@ std::string selection = getSelectedText(scintillaHandle);
 ```
 
 
+# Runtime debugging
+
+There are three types of bugs: those that are detected directly by Visual Studio (typically syntax errors), and that appear underlined in red; those that are caught during compilation; and finally bugs that only manifest at runtime.
+
+To help debug this last category, you can output some debugging information (the so-called print-based debugging). One way is to insert the information as text in the editor window (e.g. using `SCI_REPLACESEL`), or open a dialog box. The more "correct" way is to use debugging messages with `OutputDebugString()`. The problem now is, we have a dll, so Visual Studio can not directly run our code.
+
+The solution is to first open Notepad++ with the plugin loaded, then in Visual Studio, use the menu Debug>Attach to Process, and attach the running Notepad++. You can now interact with the open Window, and any debugging messages are printed in Visual Studio.
 
 
+# Additional remarks
 
+First, as I am not experienced with C++ you should probably not trust me.
+
+When closing Visual Studio, you get offered to save a ".sln" file, you can say yes, it saves the state of the program (e.g. currently open documents).
+
+The best way to figure out how to do something is to look on Github or Sourceforge at other plugins.
+
+To create a new function, you need to edit 4 places, in the header file (number of functions, signature of your new function) and the cpp file (in the menu, and to write the actual function).
+
+
+# Conclusions
+
+My (badly written) plugin can be found [on Github](https://github.com/AlexWeinreb/biotools_npp). Writing C++ code was an interesting (though confusing) experience, I would need a lot more practice to write anything close to good quality code.
+
+As the plugin has reached a level of functionality that is good enough for my needs, I don't intend to work more on it; however there could be useful improvements, for example to accept whitespace in the input (and either keep it as-is for the reverse-complement and next ORF, or remove it if inside a codon for translation).
 
