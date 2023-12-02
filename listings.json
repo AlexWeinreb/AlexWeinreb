@@ -2,6 +2,7 @@
   {
     "listing": "/index.html",
     "items": [
+      "/posts/copy_pasting_from_WSL/index.html",
       "/posts/notepad_plus_plus_plugin/index.html",
       "/posts/most_studied_genes/index.html"
     ]
