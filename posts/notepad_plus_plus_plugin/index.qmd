@@ -2,7 +2,7 @@
 title: "Writing a Notepad++ plugin"
 author: "Alexis Weinreb"
 date: "2023-11-09"
-categories: [programming]
+categories: [programming, bioinformatics]
 ---
 
 I am in the process of writing a plugin for Notepad++ to perform some biological operations. As I am not familiar with C++ and other compiled languages, I am taking some notes here about the process.
